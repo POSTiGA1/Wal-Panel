@@ -74,7 +74,6 @@ class APIService:
         return response
 
     async def get_inbounds(self) -> List[Dict[str, Any]]:
-        print("Fetching inbounds...")
         response = self._request_with_retry("GET", "panel/api/inbounds/list")
         data = self._safe_json(response)
         return data.get("obj", [])
