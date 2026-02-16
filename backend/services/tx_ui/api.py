@@ -81,7 +81,7 @@ class APIService:
     async def test_connection(self) -> bool:
         try:
             response = self._request_with_retry("GET", "panel/api/server/status")
-            return response.status_code == 200
+            return self._safe_json(response).get("success", False)
         except Exception:
             return False
 

@@ -9,6 +9,7 @@ from .marzban import AdminTaskService as MarzbanAdminTaskService
 from backend.schema.output import ResponseModel, ClientsOutput
 from backend.schema._input import PanelInput, ClientInput, ClientUpdateInput
 from backend.services.sanaei import APIService as sanaei_APIService
+from backend.services.tx_ui import APIService as txui_APIService
 from backend.services.marzban import APIService as marzban_APIService
 from backend.db import crud
 from backend.utils.logger import logger
@@ -33,7 +34,7 @@ async def create_new_panel(db: Session, panel_input: PanelInput) -> bool:
             logger.error(f"Error connecting to panel {panel_input.url}: {str(e)}")
             return False
 
-    if panel_input.panel_type == "marzban":
+    elif panel_input.panel_type == "marzban":
         try:
             connection = await marzban_APIService(
                 panel_input.url, panel_input.username, panel_input.password
@@ -42,6 +43,24 @@ async def create_new_panel(db: Session, panel_input: PanelInput) -> bool:
             if not connection:
                 logger.warning(
                     f"Panel validation failed: {panel_input.name} - unable to connect"
+                )
+                return False
+
+            logger.info(f"Panel validated successfully: {panel_input.name}")
+            return True
+        except Exception as e:
+            logger.error(f"Error connecting to panel {panel_input.url}: {str(e)}")
+            return False
+
+    elif panel_input.panel_type == "tx-ui":
+        try:
+            connection = await txui_APIService(
+                panel_input.url, panel_input.username, panel_input.password
+            ).test_connection()
+
+            if connection is None or not connection:
+                logger.warning(
+                    f"Panel validation failed: {panel_input.name} - missing required fields"
                 )
                 return False
 
@@ -179,7 +198,7 @@ async def get_all_users_from_panel(
             ),
             users,
         )
-    
+
     elif panel.panel_type == "tx-ui":
         admin_task = TxUIAdminTaskService(admin_username=admin_username, db=db)
         _clients = await admin_task.get_all_users()
@@ -322,7 +341,7 @@ async def add_new_user(
             success=True,
             message="User added successfully",
         )
-    
+
     if panel.panel_type == "tx-ui":
         if not admin_check.admin_is_active():
             logger.warning(f"Inactive admin attempted to add user: {admin_username}")
@@ -375,7 +394,6 @@ async def add_new_user(
             success=True,
             message="User added successfully",
         )
-
 
 
 async def update_a_user(
@@ -545,6 +563,7 @@ async def update_a_user(
             message="User updated successfully",
         )
 
+
 async def reset_a_user_usage(
     admin_username: str, email: str, db: Session
 ) -> JSONResponse:
@@ -641,7 +660,7 @@ async def reset_a_user_usage(
             success=True,
             message="User usage reset successfully",
         )
-    
+
     elif panel.panel_type == "tx-ui":
         if not admin_check.admin_is_active():
             logger.warning(
