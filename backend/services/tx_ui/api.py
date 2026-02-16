@@ -140,7 +140,7 @@ class APIService:
 
     async def delete_client(self, inbound_id: int, uuid: str) -> bool:
         response = self._request_with_retry(
-            "GET", f"panel/api/inbounds/{inbound_id}/delClient/{uuid}"
+            "POST", f"panel/api/inbounds/{inbound_id}/delClient/{uuid}"
         )
         return self._safe_json(response).get("success", False)
 

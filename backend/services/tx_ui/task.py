@@ -23,8 +23,7 @@ class AdminTaskService:
             inbounds = await self.api_service.get_inbounds()
 
             inbound = next(
-                (inb for inb in inbounds if inb["id"] == self.admin.inbound_id),
-                None
+                (inb for inb in inbounds if inb["id"] == self.admin.inbound_id), None
             )
 
             if not inbound:
@@ -46,7 +45,6 @@ class AdminTaskService:
         except Exception as e:
             logger.error(f"Error retrieving all users: {str(e)}")
             return []
-
 
     async def get_client_by_email(self, email: str) -> dict | bool:
         try:
@@ -93,7 +91,9 @@ class AdminTaskService:
 
     async def reset_client_usage(self, email: str) -> bool:
         try:
-            result = await self.api_service.reset_client_usage(self.admin.inbound_id, email)
+            result = await self.api_service.reset_client_usage(
+                self.admin.inbound_id, email
+            )
             return result
         except Exception as e:
             logger.error(
@@ -103,8 +103,8 @@ class AdminTaskService:
 
     async def delete_client_from_panel(self, uuid: str) -> bool:
         try:
-            await self.api_service.delete_client(self.admin.inbound_id, uuid)
-            return True
+            result = await self.api_service.delete_client(self.admin.inbound_id, uuid)
+            return result
         except Exception as e:
             logger.error(
                 f"Failed to delete client {uuid} by admin {self.admin_username}: {str(e)}"

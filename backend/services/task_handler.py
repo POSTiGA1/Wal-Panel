@@ -805,3 +805,62 @@ async def delete_a_user(admin_username: str, uuid: str, db: Session) -> bool:
             success=True,
             message="User deleted successfully",
         )
+
+    elif panel.panel_type == "tx-ui":
+        if not admin_check.admin_is_active():
+            logger.warning(f"Inactive admin attempted to delete user: {admin_username}")
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={
+                    "success": False,
+                    "message": "Your admin account is inactive. Contact support.",
+                },
+            )
+
+        admin_task = TxUIAdminTaskService(admin_username=admin_username, db=db)
+        users = await admin_task.get_all_users()
+
+        # Find user
+        user_info = None
+        for user in users:
+            if user.get("id") == uuid:
+                user_info = await admin_task.get_client_by_email(user.get("email"))
+                break
+
+        if not user_info:
+            logger.warning(
+                f"User with id {uuid} not found for deletion by admin {admin_username}"
+            )
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "success": False,
+                    "message": "User not found",
+                },
+            )
+
+        traffic = user_info.get("total", 0) - (
+            user_info.get("up", 0) + user_info.get("down", 0)
+        )
+
+        delete_user = await admin_task.delete_client_from_panel(uuid)
+
+        if not delete_user:
+            logger.error(f"Failed to delete user {uuid} by admin {admin_username}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Failed to delete user",
+                },
+            )
+
+        admin_check.increase_usage(traffic)
+        logger.info(
+            f"User {user_info['email']} deleted by admin {admin_username}, traffic returned: {round(traffic / (1024 ** 3), 2)} GB"
+        )
+
+        return ResponseModel(
+            success=True,
+            message="User deleted successfully",
+        )
