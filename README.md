@@ -31,10 +31,10 @@ A comprehensive admin dashboard system for managing X-UI panels with role-based 
 ## ⛓️‍💥 Supported Panels
 
 - [x] **3x-ui**  
+- [x] **Tx-ui**   
 - [x] **Marzban**  
 - [ ] **PasarGuard**  
 - [ ] **S-ui**   
-- [ ] **Tx-ui**   
 
 ## ✨ Features
 
