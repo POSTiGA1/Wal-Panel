@@ -94,7 +94,7 @@ async def update_a_panel(db: Session, panel_input: PanelInput) -> bool:
             )
             return False
 
-    if panel_input.panel_type == "marzban":
+    elif panel_input.panel_type == "marzban":
         try:
             connection = await marzban_APIService(
                 panel_input.url, panel_input.username, panel_input.password
@@ -116,6 +116,27 @@ async def update_a_panel(db: Session, panel_input: PanelInput) -> bool:
             )
             return False
 
+    elif panel_input.panel_type == "tx-ui":
+        try:
+            connection = await txui_APIService(
+                panel_input.url, panel_input.username, panel_input.password
+            ).test_connection()
+
+            if connection is None or not connection:
+                logger.warning(
+                    f"Panel validation failed during update: {panel_input.name} - missing required fields"
+                )
+                return False
+
+            logger.info(
+                f"Panel validated successfully during update: {panel_input.name}"
+            )
+            return True
+        except Exception as e:
+            logger.error(
+                f"Error connecting to panel {panel_input.url} during update: {str(e)}"
+            )
+            return False
 
 async def get_all_users_from_panel(
     admin_username: str, db: Session
@@ -535,14 +556,15 @@ async def update_a_user(
                 },
             )
         admin_task = TxUIAdminTaskService(admin_username=admin_username, db=db)
-        user_info = await admin_task.get_client_by_email(user_input.email)
-        new_usage = user_info.get("total", 0) - (
-            user_info.get("up", 0) + user_info.get("down", 0)
-        )
+        users = await admin_task.get_all_users()
+        for user in users:
+            if user.get("id") == uuid:
+                user_info = user
+                break
 
         extra_traffic = (
-            user_input.total - user_info.get("total", 0)
-            if user_input.total > user_info.get("total", 0)
+            user_input.total - user_info.get("totalGB", 0)
+            if user_input.total > user_info.get("totalGB", 0)
             else 0
         )
 
@@ -843,22 +865,10 @@ async def delete_a_user(admin_username: str, uuid: str, db: Session) -> bool:
         user_info = None
         for user in users:
             if user.get("id") == uuid:
-                user_info = await admin_task.get_client_by_email(user.get("email"))
+                user_info = user
                 break
 
-        if not user_info:
-            logger.warning(
-                f"User with id {uuid} not found for deletion by admin {admin_username}"
-            )
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={
-                    "success": False,
-                    "message": "User not found",
-                },
-            )
-
-        traffic = user_info.get("total", 0) - (
+        traffic = user_info.get("totalGB", 0) - (
             user_info.get("up", 0) + user_info.get("down", 0)
         )
 

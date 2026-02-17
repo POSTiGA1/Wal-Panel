@@ -32,13 +32,25 @@ class AdminTaskService:
             settings = json.loads(inbound["settings"])
             clients = settings.get("clients", [])
 
+            client_stats = inbound.get("clientStats", [])
+
+            stats_map = {c["email"]: c for c in client_stats}
+
             online_clients = await self.api_service.get_online_clients()
 
             result = []
 
             for c in clients:
                 client_dict = c.copy()
+
+                stat = stats_map.get(c["email"], {})
+
+                client_dict["up"] = stat.get("up", 0)
+                client_dict["down"] = stat.get("down", 0)
+                client_dict["total"] = stat.get("total", 0)
+
                 client_dict["is_online"] = c["email"] in online_clients
+
                 result.append(client_dict)
             return result
 
