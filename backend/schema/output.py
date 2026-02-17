@@ -36,7 +36,7 @@ class PanelOutput(BaseModel):
 
 
 class ClientsOutput(BaseModel):
-    id: int = 0
+    id: int | str = 0
     uuid: str = 0
     username: str
     email: Optional[str] = None

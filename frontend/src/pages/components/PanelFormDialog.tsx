@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { AlertCircle, Loader2, Info } from 'lucide-react'
 
-const PANEL_TYPES = ['3x-ui', 'marzban']
+const PANEL_TYPES = ['3x-ui', 'tx-ui', 'marzban']
 
 interface PanelFormDialogProps {
     isOpen: boolean
