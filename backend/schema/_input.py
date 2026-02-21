@@ -55,7 +55,7 @@ class ClientInput(BaseModel):
 
 class ClientUpdateInput(BaseModel):
     email: str
-    enable: bool
+    enable: bool = True
     expiry_time: int
     total: float = Field(ge=104857600, description="Minimum 0.1 GB (100 MB)")
     sub_id: str
