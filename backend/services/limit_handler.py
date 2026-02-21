@@ -29,11 +29,12 @@ class AdminLimiter:
         return True
 
     def reduce_usage(self, total_traffic: int, usage_user_traffic: int) -> None:
-        if self.admin.return_traffic:
+        if self.admin.update_return_traffic:
             crud.reduce_admin_traffic(self.db, self.admin, usage_user_traffic)
             return
 
         crud.reduce_admin_traffic(self.db, self.admin, total_traffic)
 
     def increase_usage(self, traffic: int) -> None:
-        crud.increase_admin_traffic(self.db, self.admin, traffic)
+        if self.admin.delete_return_traffic:
+            crud.increase_admin_traffic(self.db, self.admin, traffic)

@@ -13,13 +13,14 @@ class AdminInput(BaseModel):
     marzban_inbounds: Optional[str] = None
     marzban_password: Optional[str] = None
     traffic: float = 0.0
-    return_traffic: bool = False
+    update_return_traffic: bool = False
+    delete_return_traffic: bool = False
     expiry_date: datetime | None
 
 
 class AdminUpdateInput(BaseModel):
     username: str
-    password: str
+    password: Optional[str] = None
     is_active: bool
     panel: str
     inbound_id: Optional[int] = None
@@ -27,7 +28,8 @@ class AdminUpdateInput(BaseModel):
     marzban_inbounds: Optional[str] = None
     marzban_password: Optional[str] = None
     traffic: float
-    return_traffic: bool
+    update_return_traffic: bool = False
+    delete_return_traffic: bool = False
     expiry_date: datetime | None
 
 
