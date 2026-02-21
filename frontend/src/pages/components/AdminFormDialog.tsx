@@ -61,7 +61,8 @@ export function AdminFormDialog({
             marzban_inbounds: null,
             flow: null,
             traffic: 0,
-            return_traffic: false,
+            update_return_traffic: false,
+            delete_return_traffic: false,
             is_active: true,
             expiry_date: null,
         },
@@ -82,7 +83,8 @@ export function AdminFormDialog({
             setValue('marzban_inbounds', admin.marzban_inbounds)
             setValue('flow', (admin as any).flow ?? null)
             setValue('traffic', bytesToGB(admin.traffic))
-            setValue('return_traffic', admin.return_traffic)
+            setValue('update_return_traffic', admin.update_return_traffic)
+            setValue('delete_return_traffic', admin.delete_return_traffic)
             setValue('is_active', admin.is_active)
             // If admin has an expiry_date (YYYY-MM-DD), convert to remaining days for the input
             if (admin.expiry_date) {
@@ -194,15 +196,20 @@ export function AdminFormDialog({
                 expiryForSubmit = String(data.expiry_date)
             }
 
-            // Add marzban_inbounds to data if available
-            const submitData = {
+            const passwordToSend = data.password?.trim() ? data.password : undefined
+
+            const submitData: any = {
                 ...data,
                 expiry_date: expiryForSubmit,
                 marzban_inbounds: Object.keys(selectedInbounds).length > 0
                     ? JSON.stringify(selectedInbounds)
                     : null,
-                // Set marzban_password to admin password for Marzban panels
-                marzban_password: selectedPanel?.panel_type === 'marzban' ? data.password : null
+                marzban_password: selectedPanel?.panel_type === 'marzban' ? passwordToSend : null,
+            }
+
+            if (!passwordToSend) {
+                delete submitData.password
+                delete submitData.marzban_password
             }
 
             if (admin?.id) {
@@ -254,13 +261,15 @@ export function AdminFormDialog({
 
                     {/* Password */}
                     <div className="space-y-2">
-                        <Label htmlFor="password">Password *</Label>
+                        <Label htmlFor="password">Password {admin ? '(optional)' : '*'}</Label>
                         <Input
                             id="password"
                             type="password"
                             placeholder={admin ? 'Leave empty to keep current' : 'Enter password'}
                             disabled={isSubmitting}
-                            {...register('password')}
+                            {...register('password', {
+                                required: admin ? false : 'Password is required',
+                            })}
                         />
                         {errors.password && (
                             <p className="text-sm text-destructive">{errors.password.message}</p>
@@ -352,7 +361,6 @@ export function AdminFormDialog({
                             </div>
                         )}
 
-
                     {/* Flow - Only for 3x-ui and tx-ui panels */}
                     {watch('panel') &&
                         ['3x-ui', 'tx-ui'].includes(
@@ -420,10 +428,20 @@ export function AdminFormDialog({
                             <input
                                 type="checkbox"
                                 disabled={isSubmitting}
-                                {...register('return_traffic')}
+                                {...register('update_return_traffic')}
                                 className="rounded border border-input"
                             />
-                            <span className="text-sm">Return Traffic</span>
+                            <span className="text-sm">Update Return Traffic</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                disabled={isSubmitting}
+                                {...register('delete_return_traffic')}
+                                className="rounded border border-input"
+                            />
+                            <span className="text-sm">Delete Return Traffic</span>
                         </label>
 
                         <label className="flex items-center gap-2 cursor-pointer">

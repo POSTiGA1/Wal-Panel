@@ -32,10 +32,16 @@ export const adminSchema = z.object({
         .min(3, 'Username must be at least 3 characters')
         .max(50, 'Username must be less than 50 characters'),
 
-    password: z
-        .string()
-        .min(4, 'Password must be at least 4 characters')
-        .max(100, 'Password must be less than 100 characters'),
+    password: z.string()
+    .optional()
+    .refine(
+        (val) => val === undefined || val === '' || val.length >= 4,
+        { message: "Password must be at least 4 characters" }
+    )
+    .refine(
+        (val) => val === undefined || val === '' || val.length <= 100,
+        { message: "Password must be less than 100 characters" }
+    ),
 
     panel: z
         .string()
@@ -67,7 +73,11 @@ export const adminSchema = z.object({
         .min(0, 'Traffic cannot be negative')
         .default(0),
 
-    return_traffic: z
+    update_return_traffic: z
+        .boolean()
+        .default(false),
+
+    delete_return_traffic: z
         .boolean()
         .default(false),
 
@@ -102,7 +112,8 @@ export interface AdminOutput {
     marzban_password: string | null
     flow?: string | null
     traffic: number
-    return_traffic: boolean
+    update_return_traffic: boolean | false
+    delete_return_traffic: boolean | false
     expiry_date: string | null
 }
 
