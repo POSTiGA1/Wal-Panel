@@ -621,6 +621,11 @@ async def reset_a_user_usage(
         usage_user_traffic = user_info.up + user_info.down
         reset_usage = await admin_task.reset_client_usage(email)
 
+        if usage_user_traffic > user_info.total:
+            usage_traffic = user_info.total
+        else:
+            usage_traffic = usage_user_traffic
+            
         if not reset_usage:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -629,7 +634,7 @@ async def reset_a_user_usage(
                     "message": "Failed to reset user usage",
                 },
             )
-        admin_check.reduce_usage(user_info.total, usage_user_traffic)
+        admin_check.reduce_usage(user_info.total, usage_traffic)
         return ResponseModel(
             success=True,
             message="User usage reset successfully",
@@ -717,6 +722,11 @@ async def reset_a_user_usage(
         usage_user_traffic = user_info.get("up", 0) + user_info.get("down", 0)
         reset_usage = await admin_task.reset_client_usage(email)
 
+        if usage_user_traffic > user_info.get("total", 0):
+            usage_traffic = user_info.get("total", 0)
+        else:
+            usage_traffic = usage_user_traffic
+
         if not reset_usage:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -725,7 +735,7 @@ async def reset_a_user_usage(
                     "message": "Failed to reset user usage",
                 },
             )
-        admin_check.reduce_usage(user_info.get("total", 0), usage_user_traffic)
+        admin_check.reduce_usage(user_info.get("total", 0), usage_traffic)
         return ResponseModel(
             success=True,
             message="User usage reset successfully",
