@@ -86,7 +86,16 @@ export function DashboardPage() {
     const [qrUser, setQrUser] = useState<ClientsOutput | null>(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [searchQuery, setSearchQuery] = useState('')
-    const usersPerPage = 5
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'online'>('all')
+    const [usersPerPage, setUsersPerPage] = useState(() => {
+        const saved = localStorage.getItem('usersPerPage')
+        return saved ? parseInt(saved, 10) : 5
+    })
+
+    // Save usersPerPage to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('usersPerPage', usersPerPage.toString())
+    }, [usersPerPage])
 
     const userRole = getUserRole()
 
@@ -452,35 +461,63 @@ export function DashboardPage() {
                             </Button>
                         </div>
 
-                        {/* Search Bar */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="text"
-                                placeholder="Search users by email or username..."
-                                value={searchQuery}
+                        {/* Search Bar and Filter */}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <select
+                                value={statusFilter}
                                 onChange={(e) => {
-                                    setSearchQuery(e.target.value)
-                                    setCurrentPage(1) // Reset to first page when searching
+                                    setStatusFilter(e.target.value as 'all' | 'active' | 'inactive' | 'online')
+                                    setCurrentPage(1)
                                 }}
-                                className="pl-10"
-                            />
+                                className="h-10 w-auto rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option value="all">All</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="online">Online</option>
+                            </select>
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search users by email or username..."
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value)
+                                        setCurrentPage(1)
+                                    }}
+                                    className="pl-10"
+                                />
+                            </div>
                         </div>
                     </CardHeader>
 
                     <CardContent>
                         {(() => {
-                            // Filter users based on search query
-                            const filteredUsers = dashboardData.users.filter(user =>
-                                user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                (user.uuid && user.uuid.toLowerCase().includes(searchQuery.toLowerCase()))
-                            )
+                            // Filter users based on search query and status
+                            const filteredUsers = dashboardData.users.filter(user => {
+                                // Search filter
+                                const matchesSearch = user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (user.uuid && user.uuid.toLowerCase().includes(searchQuery.toLowerCase()))
+                                
+                                if (!matchesSearch) return false
+                                
+                                // Status filter
+                                if (statusFilter === 'all') return true
+                                if (statusFilter === 'online') return user.is_online
+                                if (statusFilter === 'active') return user.status && !user.is_online
+                                if (statusFilter === 'inactive') return !user.status
+                                
+                                return true
+                            })
 
                             if (filteredUsers.length === 0) {
                                 return (
                                     <div className="text-center py-8">
                                         <p className="text-muted-foreground">
-                                            {searchQuery ? 'No users found matching your search' : 'No users yet'}
+                                            {searchQuery || statusFilter !== 'all' 
+                                                ? 'No users found matching your filters' 
+                                                : 'No users yet'}
                                         </p>
                                     </div>
                                 )
@@ -573,35 +610,54 @@ export function DashboardPage() {
                                     </div>
 
                                     {/* Pagination */}
-                                    {filteredUsers.length > usersPerPage && (
+                                    {filteredUsers.length > 0 && (
                                         <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t mt-4 gap-3">
-                                            <p className="text-sm text-muted-foreground text-center sm:text-left">
-                                                Showing {((currentPage - 1) * usersPerPage) + 1} to {Math.min(currentPage * usersPerPage, filteredUsers.length)} of {filteredUsers.length}
-                                                {searchQuery && dashboardData.users && ` (filtered from ${dashboardData.users.length} total)`}
-                                            </p>
-                                            <div className="flex items-center gap-1 sm:gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    <ChevronLeft className="h-4 w-4" />
-                                                    <span className="hidden sm:inline">Previous</span>
-                                                </Button>
-                                                <span className="text-sm text-muted-foreground px-1 sm:px-2">
-                                                    {currentPage} / {Math.ceil(filteredUsers.length / usersPerPage)}
-                                                </span>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredUsers.length / usersPerPage), p + 1))}
-                                                    disabled={currentPage >= Math.ceil(filteredUsers.length / usersPerPage)}
-                                                >
-                                                    <span className="hidden sm:inline">Next</span>
-                                                    <ChevronRight className="h-4 w-4" />
-                                                </Button>
+                                            <div className="flex items-center gap-3">
+                                                <p className="text-sm text-muted-foreground text-center sm:text-left">
+                                                    Showing {((currentPage - 1) * usersPerPage) + 1} to {Math.min(currentPage * usersPerPage, filteredUsers.length)} of {filteredUsers.length}
+                                                    {searchQuery && dashboardData.users && ` (filtered from ${dashboardData.users.length} total)`}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-muted-foreground">Show:</span>
+                                                    <select
+                                                        value={usersPerPage}
+                                                        onChange={(e) => {
+                                                            setUsersPerPage(parseInt(e.target.value, 10))
+                                                            setCurrentPage(1)
+                                                        }}
+                                                        className="h-8 rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                    >
+                                                        <option value={5}>5</option>
+                                                        <option value={10}>10</option>
+                                                        <option value={20}>20</option>
+                                                    </select>
+                                                </div>
                                             </div>
+                                            {filteredUsers.length > usersPerPage && (
+                                                <div className="flex items-center gap-1 sm:gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        <ChevronLeft className="h-4 w-4" />
+                                                        <span className="hidden sm:inline">Previous</span>
+                                                    </Button>
+                                                    <span className="text-sm text-muted-foreground px-1 sm:px-2">
+                                                        {currentPage} / {Math.ceil(filteredUsers.length / usersPerPage)}
+                                                    </span>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredUsers.length / usersPerPage), p + 1))}
+                                                        disabled={currentPage >= Math.ceil(filteredUsers.length / usersPerPage)}
+                                                    >
+                                                        <span className="hidden sm:inline">Next</span>
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </>
@@ -791,9 +847,9 @@ function DetailsRow({
                     <TableCell colSpan={6}>
                         <div className="py-4 space-y-3">
                             {subUrl && user.sub_id && (
-                                <div className="p-3 bg-background rounded-md border">
+                                <div className="p-3 bg-background rounded-md border overflow-hidden">
                                     <div className="text-xs text-muted-foreground mb-1">Subscription Link:</div>
-                                    {buildSubUrl(subUrl, user.sub_id)}
+                                    <div className="text-xs font-mono break-all">{buildSubUrl(subUrl, user.sub_id)}</div>
                                 </div>
                             )}
                             <div className="flex flex-wrap gap-2 pt-2">
@@ -921,9 +977,9 @@ function MobileUserCard({
                 <div className="border-t p-3 space-y-3 bg-muted/30">
                     {/* Subscription Link */}
                     {subUrl && user.sub_id && (
-                        <div className="p-3 bg-background rounded-md border">
+                        <div className="p-3 bg-background rounded-md border overflow-hidden">
                             <div className="text-xs text-muted-foreground mb-1">Subscription Link:</div>
-                            {buildSubUrl(subUrl, user.sub_id)}
+                            <div className="text-xs font-mono break-all">{buildSubUrl(subUrl, user.sub_id)}</div>
                         </div>
                     )}
 
