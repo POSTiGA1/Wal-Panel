@@ -13,7 +13,7 @@ class AdminLimiter:
     def admin_is_active(self) -> bool:
         if self.admin.expiry_date is None:
             return self.admin.is_active
-        
+
         is_expired = self.admin.expiry_date < datetime.utcnow()
 
         if is_expired and self.admin.is_active:
@@ -28,12 +28,12 @@ class AdminLimiter:
             return False
         return True
 
-    def reduce_usage(self, total_traffic: int, usage_user_traffic: int) -> None:
-        if self.admin.return_traffic:
-            crud.reduce_admin_traffic(self.db, self.admin, usage_user_traffic)
+    def reduce_usage(self, total_traffic: int, usage_traffic: int) -> None:
+        if self.admin.update_return_traffic:
+            crud.reduce_admin_traffic(self.db, self.admin, usage_traffic)
             return
-
         crud.reduce_admin_traffic(self.db, self.admin, total_traffic)
 
     def increase_usage(self, traffic: int) -> None:
-        crud.increase_admin_traffic(self.db, self.admin, traffic)
+        if self.admin.delete_return_traffic:
+            crud.increase_admin_traffic(self.db, self.admin, traffic)

@@ -70,7 +70,10 @@ export function UserFormDialog({ isOpen, onClose, onSuccess, user }: UserFormDia
                 const d = new Date()
                 d.setHours(0, 0, 0, 0)
                 d.setDate(d.getDate() + Math.max(0, Math.floor(data.expiryDatetime)))
-                expiryForSubmit = d.toISOString().slice(0, 10)
+                const year = d.getFullYear()
+                const month = String(d.getMonth() + 1).padStart(2, '0')
+                const day = String(d.getDate()).padStart(2, '0')
+                expiryForSubmit = `${year}-${month}-${day}`
             } else {
                 expiryForSubmit = String(data.expiryDatetime)
             }

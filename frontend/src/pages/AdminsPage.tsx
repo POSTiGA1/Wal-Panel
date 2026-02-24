@@ -327,8 +327,12 @@ function AdminDetailsRow({
                                     <p className="font-mono font-semibold">{admin.inbound_id || 'N/A'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-muted-foreground">Return Traffic</p>
-                                    <p className="font-mono font-semibold">{admin.return_traffic ? 'Yes' : 'No'}</p>
+                                    <p className="text-muted-foreground">Update Return Traffic</p>
+                                    <p className="font-mono font-semibold">{admin.update_return_traffic ? 'Yes' : 'No'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Delete Return Traffic</p>
+                                    <p className="font-mono font-semibold">{admin.delete_return_traffic ? 'Yes' : 'No'}</p>
                                 </div>
                             </div>
                         </div>
@@ -412,8 +416,12 @@ function MobileAdminCard({
                             <p className="font-mono font-medium">{admin.inbound_id || 'N/A'}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-muted-foreground">Return Traffic</p>
-                            <p className="font-medium">{admin.return_traffic ? 'Yes' : 'No'}</p>
+                            <p className="text-xs text-muted-foreground">Update Return Traffic</p>
+                            <p className="font-medium">{admin.update_return_traffic ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">Delete Return Traffic</p>
+                            <p className="font-medium">{admin.delete_return_traffic ? 'Yes' : 'No'}</p>
                         </div>
                     </div>
 

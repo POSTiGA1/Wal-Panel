@@ -15,7 +15,8 @@ class Admins(Base):
     marzban_inbounds = Column(String, nullable=True)
     marzban_password = Column(String, nullable=True)
     traffic = Column(BigInteger, default=0)
-    return_traffic = Column(Boolean, default=False)
+    update_return_traffic = Column(Boolean, default=False)
+    delete_return_traffic = Column(Boolean, default=False)
     expiry_date = Column(DateTime, nullable=True)
     inbound_flow = Column(String, nullable=True)
 
@@ -31,6 +32,7 @@ class Panels(Base):
     username = Column(String, nullable=False)
     password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+
 
 class News(Base):
     __tablename__ = "news"
