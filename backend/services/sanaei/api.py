@@ -1,102 +1,189 @@
-from datetime import datetime
-from py3xui import AsyncApi
-from py3xui.inbound.inbound import Inbound
-from py3xui.client.client import Client
-from py3xui.server.server import Server
+import json
+import httpx
 
 from backend.schema._input import ClientInput, ClientUpdateInput
 
 
 class APIService:
-    _api_instances = {}
-    _last_login_times = {}
+    def __init__(self, url: str, token: str):
+        self.url = url.rstrip("/")
+        self.token = token
 
-    def __init__(self, url: str, username: str, password: str):
-        self.url = url
-        self.username = username
-        self.password = password
-
-        if url not in APIService._api_instances:
-            APIService._api_instances[url] = AsyncApi(url, username, password)
-
-        self.api = APIService._api_instances[url]
-
-    async def ensure_login(self):
-        last_login = APIService._last_login_times.get(self.url)
-
-        if last_login is None or (datetime.now() - last_login).total_seconds() > 3500:
-            try:
-                await self.api.login()
-                APIService._last_login_times[self.url] = datetime.now()
-            except Exception as e:
-                APIService._api_instances[self.url] = AsyncApi(
-                    self.url, self.username, self.password
-                )
-                self.api = APIService._api_instances[self.url]
-                await self.api.login()
-                APIService._last_login_times[self.url] = datetime.now()
-
-    async def test_connection(self) -> Server:
-        try:
-            api = AsyncApi(self.url, self.username, self.password)
-            await api.login()
-            info = await api.server.get_status()
-            return info
-        except Exception as e:
-            return None
-
-    async def get_inbound(self, inbound_id: int) -> Inbound:
-        await self.ensure_login()
-        inbound = await self.api.inbound.get_by_id(inbound_id)
-        return inbound
-
-    async def get_all_inbounds(self) -> list[Inbound]:
-        await self.ensure_login()
-        inbounds = await self.api.inbound.get_list()
-        return inbounds
-
-    async def get_all_online_clients(self) -> list[str]:
-        clients = await self.api.client.online()
-        return clients
-
-    async def add_client(self, inbound_id: int, inbound_flow: str, client: ClientInput):
-        await self.ensure_login()
-        data = Client(
-            email=client.email,
-            id=client.id,
-            enable=client.enable,
-            expiry_time=client.expiry_time,
-            totalGB=client.total,
-            flow=inbound_flow if inbound_flow else client.flow,
-            sub_id=client.sub_id,
+        self.client = httpx.AsyncClient(
+            base_url=self.url,
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            timeout=30.0,
         )
-        await self.api.client.add(inbound_id, [data])
 
-    async def get_client_by_email(self, email: str) -> list[Client]:
-        clients = await self.api.client.get_by_email(email)
-        return clients
+    async def test_connection(self) -> bool:
+        try:
+            response = await self.client.get("/panel/api/server/status")
+
+            if response.status_code != 200:
+                return False
+
+            data = response.json()
+
+            if not data.get("success"):
+                return False
+
+            return True
+
+        except Exception:
+            return False
+
+    async def get_inbound(self, inbound_id: int):
+
+        response = await self.client.get(
+            f"/panel/api/inbounds/get/{inbound_id}"
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return data.get("obj")
+
+    async def get_all_inbounds(self):
+
+        response = await self.client.get(
+            "/panel/api/inbounds/list"
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return data.get("obj", [])
+
+    async def get_all_online_clients(self):
+        response = await self.client.post(
+            "/panel/api/inbounds/onlines"
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return data.get("obj", [])
+
+    async def add_client(
+        self,
+        inbound_id: int,
+        inbound_flow: str,
+        client: ClientInput
+    ):
+
+        payload = {
+            "id": inbound_id,
+            "settings": {
+                "clients": [
+                    {
+                        "id": client.id,
+                        "email": client.email,
+                        "enable": client.enable,
+                        "expiryTime": client.expiry_time,
+                        "totalGB": client.total,
+                        "flow": inbound_flow if inbound_flow else client.flow,
+                        "subId": client.sub_id,
+                    }
+                ]
+            }
+        }
+
+        payload["settings"] = json.dumps(
+            payload["settings"]
+        )
+
+        response = await self.client.post(
+            "/panel/api/inbounds/addClient",
+            json=payload,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    async def get_client_by_email(self, email: str):
+        response = await self.client.get(
+            f"/panel/api/inbounds/getClientTraffics/{email}"
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return data.get("obj")
 
     async def update_client(
-        self, uuid: str, inbound_id: int, inbound_flow: str, client: ClientUpdateInput
+        self,
+        uuid: str,
+        inbound_id: int,
+        inbound_flow: str,
+        client: ClientUpdateInput
     ):
-        await self.ensure_login()
-        data = Client(
-            email=client.email,
-            id=uuid,
-            uuid=uuid,
-            enable=client.enable,
-            expiry_time=client.expiry_time,
-            totalGB=client.total,
-            flow=inbound_flow if inbound_flow else client.flow,
-            sub_id=client.sub_id,
-            inbound_id=inbound_id,
+
+        payload = {
+            "id": inbound_id,
+            "settings": {
+                "clients": [
+                    {
+                        "id": uuid,
+                        "email": client.email,
+                        "enable": client.enable,
+                        "expiryTime": client.expiry_time,
+                        "totalGB": client.total,
+                        "flow": inbound_flow if inbound_flow else client.flow,
+                        "subId": client.sub_id,
+                    }
+                ]
+            }
+        }
+
+        payload["settings"] = json.dumps(
+            payload["settings"]
         )
-        await self.api.client.update(uuid, data)
 
-    async def reset_client_usage(self, inbound_id: int, email: str):
-        await self.ensure_login()
-        await self.api.client.reset_stats(inbound_id, email)
+        response = await self.client.post(
+            f"/panel/api/inbounds/updateClient/{uuid}",
+            json=payload,
+        )
 
-    async def delete_client(self, inbound_id: int, uuid: str):
-        await self.ensure_login()
-        await self.api.client.delete(inbound_id, uuid)
+        response.raise_for_status()
+
+        return response.json()
+
+    async def reset_client_usage(
+        self,
+        inbound_id: int,
+        email: str
+    ):
+
+        response = await self.client.post(
+            f"/panel/api/inbounds/{inbound_id}/resetClientTraffic/{email}"
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    async def delete_client(
+        self,
+        inbound_id: int,
+        uuid: str
+    ):
+
+        response = await self.client.post(
+            f"/panel/api/inbounds/{inbound_id}/delClient/{uuid}"
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    async def close(self):
+        await self.client.aclose()

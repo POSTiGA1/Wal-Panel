@@ -40,6 +40,7 @@ class PanelInput(BaseModel):
     sub_url: str | None = None
     username: str
     password: str
+    token: Optional[str] = None
     is_active: bool = True
 
 

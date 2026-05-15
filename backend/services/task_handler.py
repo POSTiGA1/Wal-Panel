@@ -19,10 +19,10 @@ async def create_new_panel(db: Session, panel_input: PanelInput) -> bool:
     if panel_input.panel_type == "3x-ui":
         try:
             connection = await sanaei_APIService(
-                panel_input.url, panel_input.username, panel_input.password
+                panel_input.url, panel_input.token or ''
             ).test_connection()
 
-            if connection is None or not connection.cpu:
+            if not connection:
                 logger.warning(
                     f"Panel validation failed: {panel_input.name} - missing required fields"
                 )
@@ -75,7 +75,7 @@ async def update_a_panel(db: Session, panel_input: PanelInput) -> bool:
     if panel_input.panel_type == "3x-ui":
         try:
             connection = await sanaei_APIService(
-                panel_input.url, panel_input.username, panel_input.password
+                panel_input.url, panel_input.token or ''
             ).test_connection()
 
             if connection is None or not connection.cpu:
@@ -167,12 +167,12 @@ async def get_all_users_from_panel(
                     uuid=client.get("uuid"),
                     username=client.get("email"),
                     status=client.get("enable"),
-                    is_online=client.get("is_online"),
-                    data_limit=client.get("total"),
+                    is_online=client.get("isOnline"),
+                    data_limit=client.get("totalGB"),
                     used_data=client.get("up") + client.get("down"),
                     expiry_date=None,
-                    expiry_date_unix=client.get("expiry_time"),
-                    sub_id=client.get("sub_id"),
+                    expiry_date_unix=client.get("expiryTime"),
+                    sub_id=client.get("subId"),
                     flow=client.get("flow"),
                 )
             )
@@ -460,12 +460,18 @@ async def update_a_user(
             )
 
         admin_task = SanaeiAdminTaskService(admin_username=admin_username, db=db)
-        user_info = await admin_task.get_client_by_email(user_input.email)
-        new_usage = user_info.total - (user_info.up + user_info.down)
+        all_users = await admin_task.get_all_users()
+        user_info = next(
+            (
+                user for user in all_users
+                if user.get("email") == user_input.email
+            ),
+            None
+        )
 
         extra_traffic = (
-            user_input.total - user_info.total
-            if user_input.total > user_info.total
+            user_input.total - user_info["totalGB"]
+            if user_input.total > user_info["totalGB"]
             else 0
         )
 
@@ -620,8 +626,16 @@ async def reset_a_user_usage(
             )
 
         admin_task = SanaeiAdminTaskService(admin_username=admin_username, db=db)
-        user_info = await admin_task.get_client_by_email(email)
-        if not admin_check.check_traffic_limit(user_info.total):
+        all_users = await admin_task.get_all_users()
+        user_info = next(
+            (
+                user for user in all_users
+                if user.get("email") == email
+            ),
+            None
+        )
+
+        if not admin_check.check_traffic_limit(user_info["totalGB"]):
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={
@@ -629,11 +643,11 @@ async def reset_a_user_usage(
                     "message": f"Insufficient traffic to reset usage for this user, your limit: {round((_admin.traffic) / (1024 ** 3), 1)} GB",
                 },
             )
-        usage_user_traffic = user_info.up + user_info.down
+        usage_user_traffic = user_info["up"] + user_info["down"]
         reset_usage = await admin_task.reset_client_usage(email)
 
-        if usage_user_traffic > user_info.total:
-            usage_traffic = user_info.total
+        if usage_user_traffic > user_info["totalGB"]:
+            usage_traffic = user_info["totalGB"]
         else:
             usage_traffic = usage_user_traffic
 
@@ -645,7 +659,7 @@ async def reset_a_user_usage(
                     "message": "Failed to reset user usage",
                 },
             )
-        admin_check.reduce_usage(user_info.total, usage_traffic)
+        admin_check.reduce_usage(user_info["totalGB"], usage_traffic)
         return ResponseModel(
             success=True,
             message="User usage reset successfully",
